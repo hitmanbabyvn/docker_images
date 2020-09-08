@@ -1,0 +1,75 @@
+FROM php:5.6-apache
+RUN apt-get update && apt-get install -y libmcrypt-dev libmcrypt4 libpng-dev libc-client-dev libkrb5-dev cron supervisor vim less bash
+#RUN apt-get update && apt-get install -y libmcrypt-dev libmcrypt4 libpng-dev
+RUN docker-php-source extract \
+    && docker-php-ext-install mysql mysqli mcrypt gd \
+    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+    #&& docker-php-ext-configure imap --with-kerberos=
+    && docker-php-ext-install imap \
+    && docker-php-source delete
+
+RUN a2enmod rewrite
+
+COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+
+#COPY cron /etc/cron.d/cron
+#RUN chmod 0644 /etc/cron.d/cron
+#RUN service cron start
+#RUN echo '* * * * * /usr/local/bin/php -f /var/www/html/admin/cron/cron.php' >> /var/spool/cron/crontabs/root
+#RUN echo '* * * * * /usr/local/bin/php -f /var/www/html/admin/cron/cron.php' >> /etc/crontab
+RUN echo "* * * * * root /usr/local/bin/php -f /var/www/html/admin/cron/cron.php" >> /etc/cron.d/cron
+
+#COPY cron /var/spool/cron/crontabs/root
+#COPY cron /etc/cron.d/cron
+RUN rm -Rf /etc/cron.daily  && \
+    rm -Rf /etc/cron.weekly && \
+    rm -Rf /etc/cron.monthly && \
+    rm -Rf /etc/cron.hourly && \
+    chmod a+x /etc/cron.d/cron
+
+COPY . /var/www/html/
+# /usr/local/etc/php/conf.d/
+COPY ./php.ini $PHP_INI_DIR/conf.d/
+
+#CMD [ "sh", "-c", "apache2-foreground && cron -f" ]
+
+#COPY entrypoint.sh /
+#RUN chmod 755 /entrypoint.sh
+#ENTRYPOINT /entrypoint.sh
+#CMD ( cron -f -l 8 & ) && apache2-foreground
+#CMD ( cron -f -L 15 & ) && apache2-foreground
+
+# Expose apache.
+EXPOSE 80
+
+# Execute daemons.
+CMD exec supervisord -n
+
+#RUN chmod 777 -R /var/www/html/admin/temp
+#RUN chmod 777 -R /var/www/html/admin/com/storage
+#RUN chmod 777 -R /var/www/html/admin/import
+
+
+
+
+# FROM centos:7
+# RUN yum -y update && yum clean all
+# RUN yum -y install epel-release
+# RUN yum install -y httpd httpd-devel mod_ssl
+# RUN yum install -y php php-mysql php-mcrypt
+# #RUN systemctl enable httpd.service
+# COPY . /var/www/html/
+# EXPOSE 80
+# #CMD ["/usr/sbin/init"]
+# CMD ["/usr/sbin/httpd","-D","FOREGROUND"]
+
+# FROM php:5.6-alpine
+# RUN apk add libmcrypt-dev
+# RUN docker-php-source extract \
+#     && docker-php-ext-install mysqli mcrypt \
+#     && docker-php-source delete
+
+# #RUN a2enmod rewrite
+
+# COPY . /var/www/html/
+

@@ -1,0 +1,31 @@
+FROM php:7.2-apache
+RUN apt-get update && apt-get install -y libmcrypt-dev libmcrypt4 libpng-dev libc-client-dev libkrb5-dev cron supervisor
+#RUN apt-get update && apt-get install -y libmcrypt-dev libmcrypt4 libpng-dev
+RUN docker-php-source extract \
+    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+    && docker-php-ext-install imap mysqli gd \
+    && docker-php-source delete
+
+RUN a2enmod rewrite
+
+COPY supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+
+RUN echo "* * * * * root /usr/local/bin/php -f /var/www/html/admin/cron/cron.php" >> /etc/cron.d/cron
+#RUN echo "" >> /etc/cron.d/cron
+
+#COPY cron /var/spool/cron/crontabs/root
+#COPY cron /etc/cron.d/cron
+RUN rm -Rf /etc/cron.daily  && \
+    rm -Rf /etc/cron.weekly && \
+    rm -Rf /etc/cron.monthly && \
+    rm -Rf /etc/cron.hourly && \
+    chmod a+x /etc/cron.d/cron
+
+#COPY . /var/www/html/
+COPY ./php.ini $PHP_INI_DIR/conf.d/
+
+# Expose apache.
+EXPOSE 80
+
+# Execute daemons.
+
